@@ -403,7 +403,7 @@ function drawCanvasQueue() {
     var len = canvasToDraw.length;
     if (len > 0) {
         var dpr = window.devicePixelRatio || 1;
-        for (var i = 0, len_1 = canvasToDraw.length; i < len_1; i++) {
+        for (var i = 0; i < len; i++) {
             var canvas = canvasToDraw[i];
             canvas.element.width = canvas.width * dpr;
             canvas.element.height = canvas.height * dpr;
@@ -411,7 +411,7 @@ function drawCanvasQueue() {
             canvas.ctx.drawImage(canvas.image, 0, 0, canvas.image.width, canvas.image.height);
             canvasToDraw.splice(i, 1);
             i--;
-            len_1--;
+            len--;
         }
     }
     requestAnimationFrame(drawCanvasQueue);
@@ -588,6 +588,7 @@ var BannerAd = /** @class */ (function (_super) {
                             if (canvas.id == this.id) {
                                 adViewImage = canvas.adViewImage;
                                 canvas.element = newCanvas;
+                                canvas.ctx = newCanvas.getContext('2d');
                                 break;
                             }
                         }
