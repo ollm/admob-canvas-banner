@@ -92,8 +92,13 @@ var NativeActions;
     NativeActions["bannerLoad"] = "bannerLoad";
     NativeActions["bannerShow"] = "bannerShow";
     NativeActions["bannerDestroy"] = "bannerDestroy";
-    NativeActions["bannerGetAdViewImage"] = "bannerGetAdViewImage";
-    NativeActions["bannerSimulateClickEvent"] = "bannerSimulateClickEvent";
+    NativeActions["canvasBannerConfig"] = "canvasBannerConfig";
+    NativeActions["canvasBannerHide"] = "canvasBannerHide";
+    NativeActions["canvasBannerLoad"] = "canvasBannerLoad";
+    NativeActions["canvasBannerShow"] = "canvasBannerShow";
+    NativeActions["canvasBannerDestroy"] = "canvasBannerDestroy";
+    NativeActions["canvasBannerGetAdViewImage"] = "canvasBannerGetAdViewImage";
+    NativeActions["canvasBannerSimulateClickEvent"] = "canvasBannerSimulateClickEvent";
     NativeActions["configRequest"] = "configRequest";
     NativeActions["interstitialIsLoaded"] = "interstitialIsLoaded";
     NativeActions["interstitialLoad"] = "interstitialLoad";
@@ -128,6 +133,14 @@ var Events;
     Events["bannerOpen"] = "admob.banner.open";
     Events["bannerSize"] = "admob.banner.size";
     Events["bannerSizeChange"] = "admob.banner.sizechange";
+    Events["canvasBannerClick"] = "admob.canvasbanner.click";
+    Events["canvasBannerClose"] = "admob.canvasbanner.close";
+    Events["canvasBannerImpression"] = "admob.canvasbanner.impression";
+    Events["canvasBannerLoad"] = "admob.canvasbanner.load";
+    Events["canvasBannerLoadFail"] = "admob.canvasbanner.loadfail";
+    Events["canvasBannerOpen"] = "admob.canvasbanner.open";
+    Events["canvasBannerSize"] = "admob.canvasbanner.size";
+    Events["canvasBannerSizeChange"] = "admob.canvasbanner.sizechange";
     Events["interstitialDismiss"] = "admob.interstitial.dismiss";
     Events["interstitialImpression"] = "admob.interstitial.impression";
     Events["interstitialLoad"] = "admob.interstitial.load";
@@ -284,19 +297,108 @@ var GenericAd = /** @class */ (function (_super) {
     };
     return GenericAd;
 }(MobileAd));
+var AppOpenAdOrientation;
+(function (AppOpenAdOrientation) {
+    AppOpenAdOrientation[AppOpenAdOrientation["Portrait"] = 1] = "Portrait";
+    AppOpenAdOrientation[AppOpenAdOrientation["PortraitUpsideDown"] = 2] = "PortraitUpsideDown";
+    AppOpenAdOrientation[AppOpenAdOrientation["LandscapeRight"] = 3] = "LandscapeRight";
+    AppOpenAdOrientation[AppOpenAdOrientation["LandscapeLeft"] = 4] = "LandscapeLeft";
+})(AppOpenAdOrientation || (AppOpenAdOrientation = {}));
 var AppOpenAd = /** @class */ (function (_super) {
     __extends(AppOpenAd, _super);
     function AppOpenAd() {
         return _super !== null && _super.apply(this, arguments) || this;
     }
+    AppOpenAd.Orientation = AppOpenAdOrientation;
     return AppOpenAd;
 }(GenericAd));
+
+var colorToRGBA$1 = (function () {
+    var canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 1;
+    var ctx = canvas.getContext('2d');
+    if (!ctx)
+        return function () { return undefined; };
+    return function (col) {
+        ctx.clearRect(0, 0, 1, 1);
+        // In order to detect invalid values,
+        // we can't rely on col being in the same format as what fillStyle is computed as,
+        // but we can ask it to implicitly compute a normalized value twice and compare.
+        ctx.fillStyle = '#000';
+        ctx.fillStyle = col;
+        var computed = ctx.fillStyle;
+        ctx.fillStyle = '#fff';
+        ctx.fillStyle = col;
+        if (computed !== ctx.fillStyle) {
+            return; // invalid color
+        }
+        ctx.fillRect(0, 0, 1, 1);
+        var data = ctx.getImageData(0, 0, 1, 1).data;
+        return { r: data[0], g: data[1], b: data[2], a: data[3] };
+    };
+})();
+var BannerAd = /** @class */ (function (_super) {
+    __extends(BannerAd, _super);
+    function BannerAd(opts) {
+        var _this = _super.call(this, __assign({ position: 'bottom', size: AdSizeType.SMART_BANNER }, opts)) || this;
+        _this._loaded = false;
+        return _this;
+    }
+    BannerAd.config = function (opts) {
+        if (cordova.platformId === "ios" /* ios */) {
+            var bgColor = opts.backgroundColor;
+            return execAsync(NativeActions.bannerConfig, [
+                __assign(__assign({}, opts), { backgroundColor: bgColor ? colorToRGBA$1(bgColor) : bgColor }),
+            ]);
+        }
+        return false;
+    };
+    BannerAd.prototype.load = function () {
+        return __awaiter(this, void 0, void 0, function () {
+            var result;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0: return [4 /*yield*/, execAsync(NativeActions.bannerLoad, [
+                            __assign(__assign({}, this.opts), { id: this.id }),
+                        ])];
+                    case 1:
+                        result = _a.sent();
+                        this._loaded = true;
+                        return [2 /*return*/, result];
+                }
+            });
+        });
+    };
+    BannerAd.prototype.show = function () {
+        return __awaiter(this, void 0, void 0, function () {
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        if (!!this._loaded) return [3 /*break*/, 2];
+                        return [4 /*yield*/, this.load()];
+                    case 1:
+                        _a.sent();
+                        _a.label = 2;
+                    case 2: return [2 /*return*/, execAsync(NativeActions.bannerShow, [{ id: this.id }])];
+                }
+            });
+        });
+    };
+    BannerAd.prototype.hide = function () {
+        return execAsync(NativeActions.bannerHide, [{ id: this.id }]);
+    };
+    BannerAd.prototype.destroy = function () {
+        return execAsync(NativeActions.bannerDestroy, [{ id: this.id }]);
+    };
+    return BannerAd;
+}(MobileAd));
 
 var canvasBanners = [];
 var canvasToDraw = [];
 var canvasSetInterval = null;
-var currentDrawInterval = 250; //500;
+var currentDrawInterval = 100;
 var preciseDrawInterval = false;
+var requestAnimationFrameDraw = false;
 function loadImage(url) {
     return new Promise(function (r) { var i = new Image(); i.onload = (function () { return r(i); }); i.src = url; });
 }
@@ -310,7 +412,7 @@ function canvasClick(e) {
     return __awaiter(this, void 0, void 0, function () {
         var id, x, y, rect, _canvas, i, len, canvas;
         return __generator(this, function (_a) {
-            id = +e.target.dataset.bannerId;
+            id = +e.target.dataset.canvasBannerId;
             x = 0;
             y = 0;
             if (typeof e.offsetX !== 'undefined' && typeof e.offsetY !== 'undefined' && false) {
@@ -393,7 +495,12 @@ function updateCanvas() {
                     return [3 /*break*/, 1];
                 case 7:
                     elapsed = performance.now() - startTime;
-                    canvasSetInterval = setTimeout(updateCanvas, preciseDrawInterval ? (elapsed < currentDrawInterval ? currentDrawInterval - elapsed : 0) : currentDrawInterval);
+                    if (requestAnimationFrameDraw) {
+                        requestAnimationFrame(updateCanvas);
+                    }
+                    else {
+                        canvasSetInterval = setTimeout(updateCanvas, preciseDrawInterval ? (elapsed < currentDrawInterval ? currentDrawInterval - elapsed : 0) : currentDrawInterval);
+                    }
                     return [2 /*return*/];
             }
         });
@@ -454,26 +561,20 @@ var colorToRGBA = (function () {
         return { r: data[0], g: data[1], b: data[2], a: data[3] };
     };
 })();
-var BannerAd = /** @class */ (function (_super) {
-    __extends(BannerAd, _super);
-    function BannerAd(opts) {
-        var _this = _super.call(this, __assign(__assign({ position: 'bottom', size: AdSizeType.SMART_BANNER }, opts), opts.canvas ? {
-            x: getBoundingClientRect(opts.canvas).left,
-            y: getBoundingClientRect(opts.canvas).right,
-            width: opts.width ? opts.width : getBoundingClientRect(opts.canvas).width,
-            height: opts.height ? opts.height : getBoundingClientRect(opts.canvas).height,
-            offset: opts.offset ? opts.offset : 0,
-        } : {})) || this;
+var CanvasBannerAd = /** @class */ (function (_super) {
+    __extends(CanvasBannerAd, _super);
+    function CanvasBannerAd(opts) {
+        var _this = _super.call(this, __assign(__assign({}, opts), { x: getBoundingClientRect(opts.canvas).left, y: getBoundingClientRect(opts.canvas).right, width: opts.width ? opts.width : getBoundingClientRect(opts.canvas).width, height: opts.height ? opts.height : getBoundingClientRect(opts.canvas).height })) || this;
         _this._loaded = false;
         if (opts.autoDestroy === undefined) {
             opts.autoDestroy = true;
         }
         return _this;
     }
-    BannerAd.config = function (opts) {
+    CanvasBannerAd.config = function (opts) {
         if (cordova.platformId === "ios" /* ios */) {
             var bgColor = opts.backgroundColor;
-            return execAsync(NativeActions.bannerConfig, [
+            return execAsync(NativeActions.canvasBannerConfig, [
                 __assign(__assign({}, opts), { backgroundColor: bgColor ? colorToRGBA(bgColor) : bgColor }),
             ]);
         }
@@ -481,14 +582,16 @@ var BannerAd = /** @class */ (function (_super) {
             setCanvasInterval(opts.canvasDrawInterval);
         if (opts.preciseDrawInterval !== undefined)
             preciseDrawInterval = opts.preciseDrawInterval;
+        if (opts.requestAnimationFrameDraw !== undefined)
+            requestAnimationFrameDraw = opts.requestAnimationFrameDraw;
         return false;
     };
-    BannerAd.prototype.load = function () {
+    CanvasBannerAd.prototype.load = function () {
         return __awaiter(this, void 0, void 0, function () {
             var result;
             return __generator(this, function (_a) {
                 switch (_a.label) {
-                    case 0: return [4 /*yield*/, execAsync(NativeActions.bannerLoad, [
+                    case 0: return [4 /*yield*/, execAsync(NativeActions.canvasBannerLoad, [
                             __assign(__assign({}, this.opts), { id: this.id }),
                         ])];
                     case 1:
@@ -499,7 +602,7 @@ var BannerAd = /** @class */ (function (_super) {
             });
         });
     };
-    BannerAd.prototype.show = function (opts) {
+    CanvasBannerAd.prototype.show = function (opts) {
         if (opts === void 0) { opts = {}; }
         return __awaiter(this, void 0, void 0, function () {
             var isset, i, len, canvas;
@@ -530,20 +633,20 @@ var BannerAd = /** @class */ (function (_super) {
                                     adViewImage: '',
                                     autoDestroy: this.opts.autoDestroy,
                                 });
-                                this.opts.canvas.dataset.bannerId = String(this.id);
+                                this.opts.canvas.dataset.canvasBannerId = String(this.id);
                                 this.opts.canvas.addEventListener('click', canvasClick);
                                 setCanvasInterval(this.opts.canvasDrawInterval);
                             }
                         }
-                        return [2 /*return*/, execAsync(NativeActions.bannerShow, [__assign(__assign({}, opts), { id: this.id })])];
+                        return [2 /*return*/, execAsync(NativeActions.canvasBannerShow, [__assign(__assign({}, opts), { id: this.id })])];
                 }
             });
         });
     };
-    BannerAd.prototype.hide = function () {
-        return execAsync(NativeActions.bannerHide, [{ id: this.id }]);
+    CanvasBannerAd.prototype.hide = function () {
+        return execAsync(NativeActions.canvasBannerHide, [{ id: this.id }]);
     };
-    BannerAd.prototype.destroy = function () {
+    CanvasBannerAd.prototype.destroy = function () {
         for (var i = 0, len = canvasBanners.length; i < len; i++) {
             var canvas = canvasBanners[i];
             if (canvas.id == this.id) {
@@ -552,31 +655,31 @@ var BannerAd = /** @class */ (function (_super) {
                 len--;
             }
         }
-        return execAsync(NativeActions.bannerDestroy, [{ id: this.id }]);
+        return execAsync(NativeActions.canvasBannerDestroy, [{ id: this.id }]);
     };
-    BannerAd.prototype.getAdViewImage = function () {
+    CanvasBannerAd.prototype.getAdViewImage = function () {
         return __awaiter(this, void 0, void 0, function () {
             return __generator(this, function (_a) {
-                return [2 /*return*/, execAsync(NativeActions.bannerGetAdViewImage, [{ id: this.id }])];
+                return [2 /*return*/, execAsync(NativeActions.canvasBannerGetAdViewImage, [{ id: this.id }])];
             });
         });
     };
-    BannerAd.prototype.simulateClickEvent = function (opts) {
+    CanvasBannerAd.prototype.simulateClickEvent = function (opts) {
         if (opts === void 0) { opts = {}; }
         return __awaiter(this, void 0, void 0, function () {
             return __generator(this, function (_a) {
-                return [2 /*return*/, execAsync(NativeActions.bannerSimulateClickEvent, [__assign(__assign({}, opts), { id: this.id })])];
+                return [2 /*return*/, execAsync(NativeActions.canvasBannerSimulateClickEvent, [__assign(__assign({}, opts), { id: this.id })])];
             });
         });
     };
-    BannerAd.prototype.changeCanvas = function (newCanvas) {
+    CanvasBannerAd.prototype.changeCanvas = function (newCanvas) {
         return __awaiter(this, void 0, void 0, function () {
-            var ctx, adViewImage, i, len, canvas, rect, dpr, image, ctx;
+            var ctx, adViewImage, i, len, canvas, rect, image, ctx;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         if (!this.opts.canvas) return [3 /*break*/, 2];
-                        if (this.opts.canvas.isConnected) {
+                        if (this.opts.canvas.isConnected && this.opts.cleanPrevCanvas) {
                             ctx = this.opts.canvas.getContext('2d');
                             ctx.clearRect(0, 0, this.opts.canvas.width, this.opts.canvas.height);
                         }
@@ -594,21 +697,24 @@ var BannerAd = /** @class */ (function (_super) {
                         }
                         if (!adViewImage) return [3 /*break*/, 2];
                         rect = newCanvas.getBoundingClientRect();
-                        dpr = window.devicePixelRatio || 1;
-                        newCanvas.width = rect.width * dpr;
-                        newCanvas.height = rect.height * dpr;
                         return [4 /*yield*/, loadImage('data:image/jpeg;base64,' + adViewImage)];
                     case 1:
                         image = _a.sent();
                         ctx = newCanvas.getContext('2d');
-                        ctx.drawImage(image, 0, 0, image.width, image.height);
+                        canvasToDraw.push({
+                            element: newCanvas,
+                            ctx: ctx,
+                            image: image,
+                            width: rect.width,
+                            height: rect.height,
+                        });
                         _a.label = 2;
                     case 2: return [2 /*return*/, true];
                 }
             });
         });
     };
-    return BannerAd;
+    return CanvasBannerAd;
 }(MobileAd));
 
 var InterstitialAd = /** @class */ (function (_super) {
@@ -643,6 +749,47 @@ var NativeAd = /** @class */ (function (_super) {
         return __awaiter(this, void 0, void 0, function () {
             return __generator(this, function (_a) {
                 return [2 /*return*/, execAsync(NativeActions.adHide, [{ id: this.id }])];
+            });
+        });
+    };
+    NativeAd.prototype.showWith = function (elm) {
+        return __awaiter(this, void 0, void 0, function () {
+            var update, observer;
+            var _this = this;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        update = function () { return __awaiter(_this, void 0, void 0, function () {
+                            var r;
+                            return __generator(this, function (_a) {
+                                switch (_a.label) {
+                                    case 0:
+                                        r = elm.getBoundingClientRect();
+                                        return [4 /*yield*/, this.show({
+                                                x: r.x,
+                                                y: r.y,
+                                                width: r.width,
+                                                height: r.height,
+                                            })];
+                                    case 1:
+                                        _a.sent();
+                                        return [2 /*return*/];
+                                }
+                            });
+                        }); };
+                        observer = new MutationObserver(update);
+                        observer.observe(document.body, {
+                            attributes: true,
+                            childList: true,
+                            subtree: true,
+                        });
+                        document.addEventListener('scroll', update);
+                        window.addEventListener('resize', update);
+                        return [4 /*yield*/, update()];
+                    case 1:
+                        _a.sent();
+                        return [2 /*return*/];
+                }
             });
         });
     };
@@ -693,6 +840,7 @@ var AdMob = /** @class */ (function () {
     function AdMob() {
         this.AppOpenAd = AppOpenAd;
         this.BannerAd = BannerAd;
+        this.CanvasBannerAd = CanvasBannerAd;
         this.InterstitialAd = InterstitialAd;
         this.NativeAd = NativeAd;
         this.RewardedAd = RewardedAd;

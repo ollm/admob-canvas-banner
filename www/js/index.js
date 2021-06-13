@@ -67,26 +67,27 @@ async function onDeviceReady() {
 		if(currentBannerCanvas == 1 && canvas1_2) {
 
 			currentBannerCanvas = 2;
-			banner1.changeCanvas(canvas1_2);
+			banner1.changeCanvas(canvas1_2, true);
 
 		} else if(canvas1) {
 
 			currentBannerCanvas = 1;
-			banner1.changeCanvas(canvas1);
+			banner1.changeCanvas(canvas1, false);
 			
 		}
 
 	});
 
 	// cordova build --debug android ; cp platforms/android/app/build/outputs/apk/debug/app-debug.apk app-debug.apk
-	await admob.start()
+	await admob.start();
 
-	admob.BannerAd.config({
-		canvasDrawInterval: 16.66,
-		preciseDrawInterval: true,
+	admob.CanvasBannerAd.config({
+		//canvasDrawInterval: 100,
+		//preciseDrawInterval: true,
+		requestAnimationFrameDraw: true,
 	});
 
-	banner1 = await new admob.BannerAd({
+	banner1 = await new admob.CanvasBannerAd({
 		adUnitId: 'ca-app-pub-3940256099942544/6300978111',
 		canvas: document.querySelector('#canvas1'),
 		autoDestroy: false,
@@ -94,18 +95,12 @@ async function onDeviceReady() {
 
 	await banner1.show()
 
-	banner2 = await new admob.BannerAd({
+	banner2 = await new admob.CanvasBannerAd({
 		adUnitId: 'ca-app-pub-3940256099942544/6300978111',
 		canvas: document.querySelector('#canvas2'),
 	})
 
-	await banner2.show()
-
-	/*banner = await new admob.BannerAd({
-		adUnitId: 'ca-app-pub-3940256099942544/6300978111',
-	})
-
-	await banner.show()*/
+	await banner2.show();
 
 
 }
